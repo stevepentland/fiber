@@ -7,6 +7,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
+	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/gofiber/fiber/v2/utils"
 )
 
@@ -28,11 +29,12 @@ type Config struct {
 	//
 	// Ignored if an Extractor is explicitly set.
 	//
-	// Optional. Default: "header:X-CSRF-Token"
+	// Optional. Default: "header:X-Csrf-Token"
 	KeyLookup string
 
 	// Name of the session cookie. This cookie will store session key.
 	// Optional. Default value "csrf_".
+	// Overridden if KeyLookup == "cookie:<name>"
 	CookieName string
 
 	// Domain of the CSRF cookie.
@@ -64,16 +66,34 @@ type Config struct {
 	// Optional. Default: 1 * time.Hour
 	Expiration time.Duration
 
+	// SingleUseToken indicates if the CSRF token be destroyed
+	// and a new one generated on each use.
+	//
+	// Optional. Default: false
+	SingleUseToken bool
+
 	// Store is used to store the state of the middleware
 	//
 	// Optional. Default: memory.New()
+	// Ignored if Session is set.
 	Storage fiber.Storage
+
+	// Session is used to store the state of the middleware
+	//
+	// Optional. Default: nil
+	// If set, the middleware will use the session store instead of the storage
+	Session *session.Store
+
+	// SessionKey is the key used to store the token in the session
+	//
+	// Default: "fiber.csrf.token"
+	SessionKey string
 
 	// Context key to store generated CSRF token into context.
 	// If left empty, token will not be stored in context.
 	//
 	// Optional. Default: ""
-	ContextKey string
+	ContextKey interface{}
 
 	// KeyGenerator creates a new CSRF token
 	//
@@ -100,19 +120,26 @@ type Config struct {
 	//
 	// Optional. Default will create an Extractor based on KeyLookup.
 	Extractor func(c *fiber.Ctx) (string, error)
+
+	// HandlerContextKey is used to store the CSRF Handler into context
+	//
+	// Default: "fiber.csrf.handler"
+	HandlerContextKey interface{}
 }
 
 const HeaderName = "X-Csrf-Token"
 
 // ConfigDefault is the default config
 var ConfigDefault = Config{
-	KeyLookup:      "header:" + HeaderName,
-	CookieName:     "csrf_",
-	CookieSameSite: "Lax",
-	Expiration:     1 * time.Hour,
-	KeyGenerator:   utils.UUID,
-	ErrorHandler:   defaultErrorHandler,
-	Extractor:      CsrfFromHeader(HeaderName),
+	KeyLookup:         "header:" + HeaderName,
+	CookieName:        "csrf_",
+	CookieSameSite:    "Lax",
+	Expiration:        1 * time.Hour,
+	KeyGenerator:      utils.UUIDv4,
+	ErrorHandler:      defaultErrorHandler,
+	Extractor:         CsrfFromHeader(HeaderName),
+	SessionKey:        "fiber.csrf.token",
+	HandlerContextKey: "fiber.csrf.handler",
 }
 
 // default ErrorHandler that process return error from fiber.Handler
@@ -174,6 +201,12 @@ func configDefault(config ...Config) Config {
 	if cfg.ErrorHandler == nil {
 		cfg.ErrorHandler = ConfigDefault.ErrorHandler
 	}
+	if cfg.SessionKey == "" {
+		cfg.SessionKey = ConfigDefault.SessionKey
+	}
+	if cfg.HandlerContextKey == nil {
+		cfg.HandlerContextKey = ConfigDefault.HandlerContextKey
+	}
 
 	// Generate the correct extractor to get the token from the correct location
 	selectors := strings.Split(cfg.KeyLookup, ":")
@@ -195,7 +228,14 @@ func configDefault(config ...Config) Config {
 		case "param":
 			cfg.Extractor = CsrfFromParam(selectors[1])
 		case "cookie":
+			if cfg.Session == nil {
+				log.Warn("[CSRF] Cookie extractor is not recommended without a session store")
+			}
+			if cfg.CookieSameSite == "None" || cfg.CookieSameSite != "Lax" && cfg.CookieSameSite != "Strict" {
+				log.Warn("[CSRF] Cookie extractor is only recommended for use with SameSite=Lax or SameSite=Strict")
+			}
 			cfg.Extractor = CsrfFromCookie(selectors[1])
+			cfg.CookieName = selectors[1] // Cookie name is the same as the key
 		}
 	}
 

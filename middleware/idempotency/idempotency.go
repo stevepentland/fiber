@@ -12,9 +12,11 @@ import (
 // Inspired by https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-idempotency-key-header-02
 // and https://github.com/penguin-statistics/backend-next/blob/f2f7d5ba54fc8a58f168d153baa17b2ad4a14e45/internal/pkg/middlewares/idempotency.go
 
+type localsKeys string
+
 const (
-	localsKeyIsFromCache   = "idempotency_isfromcache"
-	localsKeyWasPutToCache = "idempotency_wasputtocache"
+	localsKeyIsFromCache   localsKeys = "idempotency_isfromcache"
+	localsKeyWasPutToCache localsKeys = "idempotency_wasputtocache"
 )
 
 func IsFromCache(c *fiber.Ctx) bool {
@@ -45,8 +47,10 @@ func New(config ...Config) fiber.Handler {
 
 			_ = c.Status(res.StatusCode)
 
-			for header, val := range res.Headers {
-				c.Set(header, val)
+			for header, vals := range res.Headers {
+				for _, val := range vals {
+					c.Context().Response.Header.Add(header, val)
+				}
 			}
 
 			if len(res.Body) != 0 {
@@ -122,7 +126,7 @@ func New(config ...Config) fiber.Handler {
 				res.Headers = headers
 			} else {
 				// Filter
-				res.Headers = make(map[string]string)
+				res.Headers = make(map[string][]string)
 				for h := range headers {
 					if _, ok := keepResponseHeadersMap[utils.ToLower(h)]; ok {
 						res.Headers[h] = headers[h]

@@ -15,13 +15,13 @@ Titles always we must use prefix according to below:
 - 📚 Doc: Translate to Portuguese middleware redirect
 - 🎨 Style: Respected pattern Golint
 
-All pull request that contains a feature or fix is mandatory to have unit tests. Your PR is only to be merged if you respect this flow.
+All pull requests that contain a feature or fix are mandatory to have unit tests. Your PR is only to be merged if you respect this flow.
 
 # 👍 Contribute
 
 If you want to say **thank you** and/or support the active development of `Fiber`:
 
 1. Add a [GitHub Star](https://github.com/gofiber/fiber/stargazers) to the project.
-2. Tweet about the project [on your Twitter](https://twitter.com/intent/tweet?text=%F0%9F%9A%80%20Fiber%20%E2%80%94%20is%20an%20Express.js%20inspired%20web%20framework%20build%20on%20Fasthttp%20for%20%23Go%20https%3A%2F%2Fgithub.com%2Fgofiber%2Ffiber).
+2. Tweet about the project [on your 𝕏 (Twitter)](https://x.com/intent/tweet?text=%F0%9F%9A%80%20Fiber%20%E2%80%94%20is%20an%20Express.js%20inspired%20web%20framework%20build%20on%20Fasthttp%20for%20%23Go%20https%3A%2F%2Fgithub.com%2Fgofiber%2Ffiber).
 3. Write a review or tutorial on [Medium](https://medium.com/), [Dev.to](https://dev.to/) or personal blog.
 4. Support the project by donating a [cup of coffee](https://buymeacoff.ee/fenny).

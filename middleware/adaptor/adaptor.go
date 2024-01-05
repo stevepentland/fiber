@@ -7,10 +7,11 @@ import (
 	"reflect"
 	"unsafe"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/utils"
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasthttp/fasthttpadaptor"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/utils"
 )
 
 // HTTPHandlerFunc wraps net/http handler func to fiber handler
@@ -75,6 +76,7 @@ func HTTPMiddleware(mw func(http.Handler) http.Handler) fiber.Handler {
 			c.Request().Header.SetMethod(r.Method)
 			c.Request().SetRequestURI(r.RequestURI)
 			c.Request().SetHost(r.Host)
+			c.Request().Header.SetHost(r.Host)
 			for key, val := range r.Header {
 				for _, v := range val {
 					c.Request().Header.Set(key, v)
@@ -116,14 +118,9 @@ func handlerFunc(app *fiber.App, h ...fiber.Handler) http.HandlerFunc {
 		defer fasthttp.ReleaseRequest(req)
 		// Convert net/http -> fasthttp request
 		if r.Body != nil {
-			body, err := io.ReadAll(r.Body)
-			if err != nil {
-				http.Error(w, utils.StatusMessage(fiber.StatusInternalServerError), fiber.StatusInternalServerError)
-				return
-			}
+			n, err := io.Copy(req.BodyWriter(), r.Body)
+			req.Header.SetContentLength(int(n))
 
-			req.Header.SetContentLength(len(body))
-			_, err = req.BodyWriter().Write(body)
 			if err != nil {
 				http.Error(w, utils.StatusMessage(fiber.StatusInternalServerError), fiber.StatusInternalServerError)
 				return
@@ -132,6 +129,7 @@ func handlerFunc(app *fiber.App, h ...fiber.Handler) http.HandlerFunc {
 		req.Header.SetMethod(r.Method)
 		req.SetRequestURI(r.RequestURI)
 		req.SetHost(r.Host)
+		req.Header.SetHost(r.Host)
 		for key, val := range r.Header {
 			for _, v := range val {
 				req.Header.Set(key, v)
